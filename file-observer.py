@@ -16,8 +16,11 @@ import sys
 import time
 import logging
 import requests
+import hashlib
 
 import ipdb
+
+import json
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -68,7 +71,26 @@ class CustomWatcher(FileSystemEventHandler):
 
     def on_modified(self, event):
         super(CustomWatcher, self).on_modified(event)
-        print(event)
+        file = event.src_path.lstrip(path)
+        with open(event.src_path, 'rb') as payload:
+            hash = hashlib.md5()
+            for chunk in iter(lambda: payload.read(4096), b""):
+                hash.update(chunk)
+            hash = hash.hexdigest()
+            print(hash)
+            r = requests.post(self.url + "/modify",
+                              data=json.dumps({file: hash}))
+            ipdb.set_trace()
+            # r = requests.post(self.url + "/modify",
+            #                   files=[payload])
+        # values = {'upload_file': event.src_path, 'DB': 'photcat', 'OUT': 'csv', 'SHORT': 'short'}
+        # r = requests.post(self.url + "/modify", files=files)#, data=values)
+        """
+        our comparison,
+        let's post the file bieng modified and an mdf,
+        if the server replies that the md5 is different we can post the file, first let's just post every time
+        """
+
         x = requests.post(self.url+ "/modify", data=event.event_type)
         # this is where we can check if data has changed
 

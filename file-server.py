@@ -22,7 +22,8 @@ import logging
 import ipdb
 import os
 import pathlib
-
+import json
+import hashlib
 dirname = os.path.dirname(__file__)
 filename = os.path.join(dirname, 'server_dir')
 
@@ -30,6 +31,21 @@ filename = os.path.join(dirname, 'server_dir')
 class FileServer(BaseHTTPRequestHandler):
 
     def handle_modify(self, dat, len):
+        file_and_md5 = json.loads(dat)
+        self._set_response()
+        for file in file_and_md5:
+            path = pathlib.Path(filename + file)
+            if path.exists():
+                # let's generate our own hash
+                hash = self.get_hash(path)
+                ipdb.set_trace()
+                if hash != file_and_md5[file]:
+                    self._set_bad_response()
+                    print("send a response that we need that file")
+                else:
+                    self._set_bad_response()
+        #         ipdb.set_trace()
+        # ipdb.set_trace()
         print("MODIFY")
 
     def handle_create_dir(self, dat, len):
@@ -40,6 +56,7 @@ class FileServer(BaseHTTPRequestHandler):
             path.mkdir(parents=True, exist_ok=True)
         else:
             print("folder already exists")
+        self._set_response()
 
     def handle_create_file(self, dat, len):
         print("CREATE FILE")
@@ -51,6 +68,7 @@ class FileServer(BaseHTTPRequestHandler):
             path.touch()
         else:
             print("file already exists ")
+        self._set_response()
 
         # with filepath.open("w", encoding="utf-8") as f:
         #     f.write(result)
@@ -67,11 +85,21 @@ class FileServer(BaseHTTPRequestHandler):
                 path.unlink(missing_ok=True)
         else:
             print("folder doesn't exist")
+        self._set_response()
+
+    def get_hash(self, path_in):
+        with open(path_in, 'rb') as payload:
+            hash = hashlib.md5()
+            for chunk in iter(lambda: payload.read(4096), b""):
+                hash.update(chunk)
+            return hash.hexdigest()
 
     def handle_close(self, dat, len):
+        self._set_response()
         print("CLOSE")
 
     def handle_move(self, dat, len):
+        self._set_response()
         print("MOVE")
 
     valid_urls = {
@@ -82,6 +110,11 @@ class FileServer(BaseHTTPRequestHandler):
         "/close": handle_close,
         "/move": handle_move
     }
+
+    def _set_continue_response(self):
+        self.send_response(100)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
 
     def _set_response(self):
         self.send_response(200)
@@ -115,8 +148,9 @@ class FileServer(BaseHTTPRequestHandler):
         logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
                 str(self.path), str(self.headers), post_data.decode('utf-8'))
         # ipdb.set_trace()
-        self._set_response()
+        # self._set_response()
         self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
+
 
 
 def run(server_class=HTTPServer, handler_class=FileServer, port=8080):
