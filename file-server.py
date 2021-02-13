@@ -19,21 +19,102 @@ this is stolen but listens to posts at 127.0.0.1:8080/yo
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import logging
+import ipdb
+import os
+import pathlib
+
+dirname = os.path.dirname(__file__)
+filename = os.path.join(dirname, 'server_dir')
 
 
 class FileServer(BaseHTTPRequestHandler):
+
+    def handle_modify(self, dat, len):
+        print("MODIFY")
+
+    def handle_create_dir(self, dat, len):
+        print("CREATE DIR")
+        created_name = dat.decode("utf-8")
+        path = pathlib.Path(filename + created_name)
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+        else:
+            print("folder already exists")
+
+    def handle_create_file(self, dat, len):
+        print("CREATE FILE")
+        created_name = dat.decode("utf-8")
+        path = pathlib.Path(filename + created_name)
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.exists():
+            path.touch()
+        else:
+            print("file already exists ")
+
+        # with filepath.open("w", encoding="utf-8") as f:
+        #     f.write(result)
+
+    def handle_delete(self, dat, len):
+        print("DELETE FILE")
+        deleted_name = dat.decode("utf-8")
+        path = pathlib.Path(filename + deleted_name)
+        if path.exists():
+            if path.is_dir():
+                # error if path ahs contents, need a recursive appraoch
+                path.rmdir()
+            else:
+                path.unlink(missing_ok=True)
+        else:
+            print("folder doesn't exist")
+
+    def handle_close(self, dat, len):
+        print("CLOSE")
+
+    def handle_move(self, dat, len):
+        print("MOVE")
+
+    valid_urls = {
+        "/modify": handle_modify,
+        "/create_dir": handle_create_dir,
+        "/create_file": handle_create_file,
+        "/delete": handle_delete,
+        "/close": handle_close,
+        "/move": handle_move
+    }
+
     def _set_response(self):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
+    def _set_bad_response(self):
+        self.send_response(400)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
     # listen to posted info
     def do_POST(self):
+
+        """
+        self.path can be:
+            -modify
+            -delete
+            -create
+            -close
+            -move
+        :return:
+        """
+        if self.path not in self.valid_urls.keys():
+            self._set_bad_response()
+            return
+
         content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
         post_data = self.rfile.read(content_length)  # <--- Gets the data itself
+        self.valid_urls[self.path](self, post_data, content_length)
         logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
                 str(self.path), str(self.headers), post_data.decode('utf-8'))
-
+        # ipdb.set_trace()
         self._set_response()
         self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
 
@@ -58,3 +139,17 @@ if __name__ == '__main__':
         run(port=int(argv[1]))
     else:
         run()
+
+"""
+/create is imediately followed by /move
+two /modifies in a row
+
+for my own security there will be one updating dir on the server that gets overwritten by the client whenever
+it is launched
+
+os.makedirs os.create file?
+
+os.rename
+os.mkdir
+os.mknod makes a file
+"""
