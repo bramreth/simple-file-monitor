@@ -18,12 +18,16 @@ this is stolen but listens to posts at 127.0.0.1:8080/yo
 """
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+from urllib.parse import urlparse
+import urllib
+
 import logging
 import ipdb
 import os
 import pathlib
-import json
 import hashlib
+
 dirname = os.path.dirname(__file__)
 filename = os.path.join(dirname, 'server_dir')
 
@@ -31,22 +35,13 @@ filename = os.path.join(dirname, 'server_dir')
 class FileServer(BaseHTTPRequestHandler):
 
     def handle_modify(self, dat, len):
-        file_and_md5 = json.loads(dat)
-        self._set_response()
-        for file in file_and_md5:
-            path = pathlib.Path(filename + file)
-            if path.exists():
-                # let's generate our own hash
-                hash = self.get_hash(path)
-                ipdb.set_trace()
-                if hash != file_and_md5[file]:
-                    self._set_bad_response()
-                    print("send a response that we need that file")
-                else:
-                    self._set_bad_response()
-        #         ipdb.set_trace()
-        # ipdb.set_trace()
+        # '--81c94c922caee0050af3403691790e2d\r\nContent-Disposition: form-data; name="file"; filename="New Text Document.txt"\r\n\r\n\r\n--81c94c922caee0050af3403691790e2d--\r\n'
+        data = dat.decode('utf-8')
+        #there has to be a way we can read this file data, seeing as the filename is saved inside there...
+        # I'm not familiar with how this bytestream is stored i need a parser of some kind to turn the data back into a file server side.'
+        path = pathlib.Path(filename + "t.txt")
         print("MODIFY")
+        ipdb.set_trace()
 
     def handle_create_dir(self, dat, len):
         print("CREATE DIR")
@@ -102,7 +97,8 @@ class FileServer(BaseHTTPRequestHandler):
         self._set_response()
         print("MOVE")
 
-    valid_urls = {
+
+    valid_post_urls = {
         "/modify": handle_modify,
         "/create_dir": handle_create_dir,
         "/create_file": handle_create_file,
@@ -111,8 +107,35 @@ class FileServer(BaseHTTPRequestHandler):
         "/move": handle_move
     }
 
-    def _set_continue_response(self):
-        self.send_response(100)
+    def handle_modify_request(self, params):
+        #this could be improved the urlib saves as a list
+
+        if isinstance(params["file"], list) and isinstance(params["hash"], list):
+            file = params["file"][0]
+            md5 = params["hash"][0]
+        else:
+            print("weird jazz!")
+            return
+
+        path = pathlib.Path(filename + file)
+        if path.exists():
+            # let's generate our own hash
+            hash = self.get_hash(path)
+            if hash != md5:
+                self._set_response()
+                print("send a response that we need that file")
+            else:
+                self._set_dismiss_response()
+                print("we don't care")
+
+        # ipdb.set_trace()
+
+    valid_get_urls = {
+        "/modify_request": handle_modify_request
+    }
+
+    def _set_dismiss_response(self):
+        self.send_response(406)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
@@ -138,18 +161,29 @@ class FileServer(BaseHTTPRequestHandler):
             -move
         :return:
         """
-        if self.path not in self.valid_urls.keys():
+        if self.path not in self.valid_post_urls.keys():
             self._set_bad_response()
             return
 
         content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
         post_data = self.rfile.read(content_length)  # <--- Gets the data itself
-        self.valid_urls[self.path](self, post_data, content_length)
+        self.valid_post_urls[self.path](self, post_data, content_length)
         logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
                 str(self.path), str(self.headers), post_data.decode('utf-8'))
         # ipdb.set_trace()
         # self._set_response()
         self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
+
+    def do_GET(self):
+        # param parsing
+        parse = urllib.parse.urlparse(self.path)
+        params = urllib.parse.parse_qs(parse.query)
+        path = parse.path
+
+        if path not in self.valid_get_urls.keys():
+            self._set_bad_response()
+            return
+        self.valid_get_urls[path](self, params)
 
 
 

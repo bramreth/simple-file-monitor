@@ -20,8 +20,6 @@ import hashlib
 
 import ipdb
 
-import json
-
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -78,21 +76,14 @@ class CustomWatcher(FileSystemEventHandler):
                 hash.update(chunk)
             hash = hash.hexdigest()
             print(hash)
-            r = requests.post(self.url + "/modify",
-                              data=json.dumps({file: hash}))
-            ipdb.set_trace()
-            # r = requests.post(self.url + "/modify",
-            #                   files=[payload])
-        # values = {'upload_file': event.src_path, 'DB': 'photcat', 'OUT': 'csv', 'SHORT': 'short'}
-        # r = requests.post(self.url + "/modify", files=files)#, data=values)
-        """
-        our comparison,
-        let's post the file bieng modified and an mdf,
-        if the server replies that the md5 is different we can post the file, first let's just post every time
-        """
+            response = requests.get(self.url + "/modify_request", params={"file": file, "hash": hash})
+            if response.status_code == 200:
+                # post the media
+                files = {'file': payload}
 
-        x = requests.post(self.url+ "/modify", data=event.event_type)
-        # this is where we can check if data has changed
+                r = requests.post(self.url + "/modify", files=files)
+            else:
+                print("file already present")
 
     def on_closed(self, event):
         super(CustomWatcher, self).on_closed(event)
