@@ -1,29 +1,17 @@
 """
-there are an awful lot of options here
-curl data across
-ssh /scp files across via paramiko
-
-an easy part could be keeping a history of events to decide what to do
-
-
-requests.post can send a file.
 
 https://docs.python.org/3/library/http.server.html
 
-not for production only basic security checks
 
+here is some example code I looked at to jumpstart setting up the http server.
 https://gist.github.com/mdonkers/63e115cc0c79b4f6b8b3a6b797e485c7
-
-this is stolen but listens to posts at 127.0.0.1:8080/yo
 """
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
-
 from urllib.parse import urlparse
 import urllib
-
+import sys
 import logging
-import ipdb
 import os
 import pathlib
 import hashlib
@@ -31,32 +19,42 @@ import json
 import shutil
 
 dirname = os.path.dirname(__file__)
-filename = os.path.join(dirname, 'server_dir')
+filename = dirname
+
+
+def get_hash(path_in):
+    with open(path_in, 'rb') as payload:
+        file_hash = hashlib.md5()
+        # boilerplate code, let's us hash larger files
+        for chunk in iter(lambda: payload.read(4096), b""):
+            file_hash.update(chunk)
+        return file_hash.hexdigest()
 
 
 class FileServer(BaseHTTPRequestHandler):
 
     valid_suffix = [".txt"]
 
-    def handle_modify(self, dat, len):
+    def handle_modify(self, dat):
+        logging.info("handle modify")
         data = dat.decode('utf-8')
         json_dat = json.loads(data)
         path = pathlib.Path(filename + json_dat['filename'])
         path.write_text(json_dat['contents'])
         self._set_response()
 
-    def handle_create_dir(self, dat, len):
-        print("CREATE DIR")
+    def handle_create_dir(self, dat):
+        logging.info("handle created directory")
         created_name = dat.decode("utf-8")
         path = pathlib.Path(filename + created_name)
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
         else:
-            print("folder already exists")
+            logging.warning("folder already exists")
         self._set_response()
 
-    def handle_create_file(self, dat, len):
-        print("CREATE FILE")
+    def handle_create_file(self, dat):
+        logging.info("handle created file")
         created_name = dat.decode("utf-8")
         path = pathlib.Path(filename + created_name)
         if not path.parent.exists():
@@ -64,38 +62,25 @@ class FileServer(BaseHTTPRequestHandler):
         if not path.exists():
             path.touch()
         else:
-            print("file already exists ")
+            logging.warning("file already exists")
         self._set_response()
 
-        # with filepath.open("w", encoding="utf-8") as f:
-        #     f.write(result)
-
-    def handle_delete(self, dat, len):
-        print("DELETE FILE")
+    def handle_delete(self, dat):
+        logging.info("handle deletion")
         deleted_name = dat.decode("utf-8")
         path = pathlib.Path(filename + deleted_name)
         if path.exists():
             if path.is_dir():
-                # error if path ahs contents, need a recursive appraoch
-                path.rmdir()
+                # pathlib can't delete folders with contents, so shutil is used
+                shutil.rmtree(path)
             else:
                 path.unlink(missing_ok=True)
         else:
-            print("folder doesn't exist")
+            logging.warning("deletion target doesn't exist")
         self._set_response()
 
-    def get_hash(self, path_in):
-        with open(path_in, 'rb') as payload:
-            hash = hashlib.md5()
-            for chunk in iter(lambda: payload.read(4096), b""):
-                hash.update(chunk)
-            return hash.hexdigest()
-
-    def handle_close(self, dat, len):
-        self._set_response()
-        print("CLOSE")
-
-    def handle_move(self, dat, len):
+    def handle_move(self, dat):
+        logging.info("handle move/ rename")
         data = dat.decode('utf-8')
         json_dat = json.loads(data)
         src_path = pathlib.Path(filename + json_dat["src"])
@@ -103,103 +88,79 @@ class FileServer(BaseHTTPRequestHandler):
 
         shutil.move(src_path, dest_path)
         self._set_response()
-        print("MOVE")
 
-
+    # a dictionary of post paths and their handler methods, this should be handled by a server framework and decorators
     valid_post_urls = {
         "/modify": handle_modify,
         "/create_dir": handle_create_dir,
         "/create_file": handle_create_file,
         "/delete": handle_delete,
-        "/close": handle_close,
         "/move": handle_move
     }
 
     def handle_modify_request(self, params):
-        #this could be improved the urlib saves as a list
-
         if isinstance(params["file"], list) and isinstance(params["hash"], list):
             file = params["file"][0]
             md5 = params["hash"][0]
         else:
-            print("weird jazz!")
+            logging.error("invalid modify request parameters", params)
+            self._set_response(400)
             return
+        print(file, params)
 
         path = pathlib.Path(filename + file)
 
-        # for the purposes of this project I only accept folders and text files
+        # for the purposes of this project I only accept text files
         if path.suffix not in self.valid_suffix:
-            self._set_dismiss_response()
+            self._set_response(406)
             return
 
         if path.exists():
-            # let's generate our own hash
-            hash = self.get_hash(path)
-            if hash != md5:
+            # let's generate our hash of the file and compare them to find out if we need the updated data.
+            file_hash = get_hash(path)
+            if file_hash != md5:
                 self._set_response()
-                print("send a response that we need that file")
+                logging.info("request this files data")
             else:
-                self._set_dismiss_response()
-                print("we don't care")
+                self._set_response(406)
+                logging.info("file is up to date and can be ignored")
 
-        # ipdb.set_trace()
-
+    # a dictionary of get paths and their handler methods, this should be handled by a server framework and decorators
     valid_get_urls = {
         "/modify_request": handle_modify_request
     }
 
-    def _set_dismiss_response(self):
-        self.send_response(406)
+    # reply to the requester with http status codes, default is 200 ok.
+    def _set_response(self, code=200):
+        self.send_response(code)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
-    def _set_response(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-
-    def _set_bad_response(self):
-        self.send_response(400)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-
-    # listen to posted info
+    #  act on HTTP POST
     def do_POST(self):
-
-        """
-        self.path can be:
-            -modify
-            -delete
-            -create
-            -close
-            -move
-        :return:
-        """
+        # only accept paths from whitelist
         if self.path not in self.valid_post_urls.keys():
-            self._set_bad_response()
+            self._set_response(400)
             return
 
         content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
         post_data = self.rfile.read(content_length)  # <--- Gets the data itself
-        logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
-                     str(self.path), str(self.headers), post_data.decode('utf-8'))
-        self.valid_post_urls[self.path](self, post_data, content_length)
-
-        # ipdb.set_trace()
-        # self._set_response()
+        # lookup the handler method from the POST dictionary and use it on the posted data
+        self.valid_post_urls[self.path](self, post_data)
+        # boilerplate response
         self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
 
     def do_GET(self):
-        # param parsing
+        # the get path have parameters that need to be extracted and stripped before whitelisting
         parse = urllib.parse.urlparse(self.path)
         params = urllib.parse.parse_qs(parse.query)
         path = parse.path
-
+        # only accept paths from whitelist
         if path not in self.valid_get_urls.keys():
-            self._set_bad_response()
+            self._set_response(400)
             return
+        # lookup the handler method from the GET dictionary and use it on the parameters
         self.valid_get_urls[path](self, params)
-
 
 
 def run(server_class=HTTPServer, handler_class=FileServer, port=8080):
@@ -216,23 +177,5 @@ def run(server_class=HTTPServer, handler_class=FileServer, port=8080):
 
 
 if __name__ == '__main__':
-    from sys import argv
-
-    if len(argv) == 2:
-        run(port=int(argv[1]))
-    else:
-        run()
-
-"""
-/create is imediately followed by /move
-two /modifies in a row
-
-for my own security there will be one updating dir on the server that gets overwritten by the client whenever
-it is launched
-
-os.makedirs os.create file?
-
-os.rename
-os.mkdir
-os.mknod makes a file
-"""
+    filename = os.path.join(dirname, sys.argv[1]) if len(sys.argv) > 1 else dirname
+    run()

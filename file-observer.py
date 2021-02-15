@@ -84,12 +84,6 @@ class CustomWatcher(FileSystemEventHandler):
         else:
             print("file already present")
 
-    def on_closed(self, event):
-        super(CustomWatcher, self).on_closed(event)
-        print(event)
-        x = requests.post(self.url+ "/close", data=event.event_type)
-        # this is likely unimportant
-
 
 def setup_watchdog():
     logging.basicConfig(level=logging.INFO,
