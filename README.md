@@ -18,3 +18,21 @@ partially the same content) multiple times
 from the get go the most straightforward course of action to get something working appears to be setting up an os dependant directory listener and to use requests to post data to a server and a quick and dirty rest interface for posts that can listen to files being posted to that address.
 
 once that barebones implementation is working, I can tidy things up and start thinking about optimising data transfer, I can probably do something clever hashing the contents of files and checking them on the server before actually posting the files to see if information is new.
+
+## shortcomings
+My solution is naive and barebones in many ways, however works as intended in the brief.
+I make no attempt at:
+- security
+- session handling for the client or server
+- authentication
+- handling anything other than folders and text files
+- cmd argument parsing
+- state recovery
+- git style context tracking
+
+## improvements I would like to make
+- migrate the http server to use flask or django. this would afford better file uploading, and security
+- functionality to update the entire directory at once, e.g. when the application launches
+- creating sessions with the server, to simplify the process of posting file hashes and then the file if needed.
+- a simple argparser for running over the command line
+- history tracking for the server, logging dumps and an object-oriented linked list of events.

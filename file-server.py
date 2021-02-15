@@ -34,18 +34,19 @@ def get_hash(path_in):
 class FileServer(BaseHTTPRequestHandler):
 
     valid_suffix = [".txt"]
+    # logging.basicConfig(level=logging.INFO,
+    #                     format='%(asctime)s - %(message)s',
+    #                     datefmt='%Y-%m-%d %H:%M:%S')
 
-    def handle_modify(self, dat):
+    def handle_modify(self, data):
         logging.info("handle modify")
-        data = dat.decode('utf-8')
         json_dat = json.loads(data)
         path = pathlib.Path(filename + json_dat['filename'])
         path.write_text(json_dat['contents'])
         self._set_response()
 
-    def handle_create_dir(self, dat):
+    def handle_create_dir(self, created_name):
         logging.info("handle created directory")
-        created_name = dat.decode("utf-8")
         path = pathlib.Path(filename + created_name)
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
@@ -53,9 +54,8 @@ class FileServer(BaseHTTPRequestHandler):
             logging.warning("folder already exists")
         self._set_response()
 
-    def handle_create_file(self, dat):
+    def handle_create_file(self, created_name):
         logging.info("handle created file")
-        created_name = dat.decode("utf-8")
         path = pathlib.Path(filename + created_name)
         if not path.parent.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -65,9 +65,8 @@ class FileServer(BaseHTTPRequestHandler):
             logging.warning("file already exists")
         self._set_response()
 
-    def handle_delete(self, dat):
+    def handle_delete(self, deleted_name):
         logging.info("handle deletion")
-        deleted_name = dat.decode("utf-8")
         path = pathlib.Path(filename + deleted_name)
         if path.exists():
             if path.is_dir():
@@ -79,9 +78,8 @@ class FileServer(BaseHTTPRequestHandler):
             logging.warning("deletion target doesn't exist")
         self._set_response()
 
-    def handle_move(self, dat):
+    def handle_move(self, data):
         logging.info("handle move/ rename")
-        data = dat.decode('utf-8')
         json_dat = json.loads(data)
         src_path = pathlib.Path(filename + json_dat["src"])
         dest_path = pathlib.Path(filename + json_dat["dest"])
@@ -106,10 +104,8 @@ class FileServer(BaseHTTPRequestHandler):
             logging.error("invalid modify request parameters", params)
             self._set_response(400)
             return
-        print(file, params)
 
         path = pathlib.Path(filename + file)
-
         # for the purposes of this project I only accept text files
         if path.suffix not in self.valid_suffix:
             self._set_response(406)
@@ -118,6 +114,7 @@ class FileServer(BaseHTTPRequestHandler):
         if path.exists():
             # let's generate our hash of the file and compare them to find out if we need the updated data.
             file_hash = get_hash(path)
+            print(file_hash, md5)
             if file_hash != md5:
                 self._set_response()
                 logging.info("request this files data")
@@ -146,7 +143,7 @@ class FileServer(BaseHTTPRequestHandler):
         content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
         post_data = self.rfile.read(content_length)  # <--- Gets the data itself
         # lookup the handler method from the POST dictionary and use it on the posted data
-        self.valid_post_urls[self.path](self, post_data)
+        self.valid_post_urls[self.path](self, post_data.decode('utf-8'))
         # boilerplate response
         self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
 
@@ -164,7 +161,9 @@ class FileServer(BaseHTTPRequestHandler):
 
 
 def run(server_class=HTTPServer, handler_class=FileServer, port=8080):
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s - %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
     logging.info('Starting httpd...\n')
@@ -177,5 +176,6 @@ def run(server_class=HTTPServer, handler_class=FileServer, port=8080):
 
 
 if __name__ == '__main__':
+    # this should be updated to use argparse
     filename = os.path.join(dirname, sys.argv[1]) if len(sys.argv) > 1 else dirname
     run()
