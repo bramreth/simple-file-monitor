@@ -17,6 +17,7 @@ import time
 import logging
 import requests
 import hashlib
+import json
 
 import ipdb
 
@@ -24,30 +25,21 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 path = ""
+
+
 # inherit the filesystem event handler and add functionality
 class CustomWatcher(FileSystemEventHandler):
     url = 'http://127.0.0.1:8080'
     server_dir = "server_dir"
-    # def on_any_event(self, event):
-    #     super().on_any_event(event)
-    #
-    #     if not event.is_directory and event.src_path:
-    #         #with?
-    #         files = {'files': open(event.src_path, 'rb')}
-    #         values = {'upload_file': event.src_path, 'DB': 'photcat', 'OUT': 'csv', 'SHORT': 'short'}
-    #         r = requests.post(self.url, files=files, data=values)
-    #     else:
-    #         """
-    #         we have our event let's post specifics via requests when I know what I want to recienve.
-    #         """
-    #         x = requests.post(self.url, data=event.event_type)
 
     def on_moved(self, event):
         super(CustomWatcher, self).on_moved(event)
-        print("moved")
         print(event)
-        x = requests.post(self.url + "/move", data=event.event_type)
-        #this may not need to post the file just where its moving around
+        src_file = event.src_path.lstrip(path)
+        dest_file = event.dest_path.lstrip(path)
+        json_dat = json.dumps({"src": src_file, "dest": dest_file})
+        x = requests.post(self.url + "/move", data=json_dat)
+        # this may not need to post the file just where its moving around
 
     def on_created(self, event):
         super(CustomWatcher, self).on_created(event)
@@ -58,10 +50,12 @@ class CustomWatcher(FileSystemEventHandler):
             x = requests.post(self.url + "/create_dir", data=file)
         else:
             x = requests.post(self.url + "/create_file", data=file)
+            self.on_modified(event)
         #this will need to post  the file
 
     def on_deleted(self, event):
         super(CustomWatcher, self).on_deleted(event)
+        print(event)
         file = event.src_path.lstrip(path)
         # ipdb.set_trace()
         x = requests.post(self.url + "/delete", data=file)
@@ -69,7 +63,11 @@ class CustomWatcher(FileSystemEventHandler):
 
     def on_modified(self, event):
         super(CustomWatcher, self).on_modified(event)
+        if event.is_directory:
+            return
+        print(event)
         file = event.src_path.lstrip(path)
+        result = 0
         with open(event.src_path, 'rb') as payload:
             hash = hashlib.md5()
             for chunk in iter(lambda: payload.read(4096), b""):
@@ -77,13 +75,14 @@ class CustomWatcher(FileSystemEventHandler):
             hash = hash.hexdigest()
             print(hash)
             response = requests.get(self.url + "/modify_request", params={"file": file, "hash": hash})
-            if response.status_code == 200:
-                # post the media
-                files = {'file': payload}
-
-                r = requests.post(self.url + "/modify", files=files)
-            else:
-                print("file already present")
+            result = response.status_code
+        if result == 200:
+            # post the media
+            with open(event.src_path, 'r') as payload:
+                dat = json.dumps({"filename": file, "contents": payload.read()})
+                r = requests.post(self.url + "/modify", data=dat)
+        else:
+            print("file already present")
 
     def on_closed(self, event):
         super(CustomWatcher, self).on_closed(event)

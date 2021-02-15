@@ -27,6 +27,8 @@ import ipdb
 import os
 import pathlib
 import hashlib
+import json
+import shutil
 
 dirname = os.path.dirname(__file__)
 filename = os.path.join(dirname, 'server_dir')
@@ -34,14 +36,14 @@ filename = os.path.join(dirname, 'server_dir')
 
 class FileServer(BaseHTTPRequestHandler):
 
+    valid_suffix = [".txt"]
+
     def handle_modify(self, dat, len):
-        # '--81c94c922caee0050af3403691790e2d\r\nContent-Disposition: form-data; name="file"; filename="New Text Document.txt"\r\n\r\n\r\n--81c94c922caee0050af3403691790e2d--\r\n'
         data = dat.decode('utf-8')
-        #there has to be a way we can read this file data, seeing as the filename is saved inside there...
-        # I'm not familiar with how this bytestream is stored i need a parser of some kind to turn the data back into a file server side.'
-        path = pathlib.Path(filename + "t.txt")
-        print("MODIFY")
-        ipdb.set_trace()
+        json_dat = json.loads(data)
+        path = pathlib.Path(filename + json_dat['filename'])
+        path.write_text(json_dat['contents'])
+        self._set_response()
 
     def handle_create_dir(self, dat, len):
         print("CREATE DIR")
@@ -94,6 +96,12 @@ class FileServer(BaseHTTPRequestHandler):
         print("CLOSE")
 
     def handle_move(self, dat, len):
+        data = dat.decode('utf-8')
+        json_dat = json.loads(data)
+        src_path = pathlib.Path(filename + json_dat["src"])
+        dest_path = pathlib.Path(filename + json_dat["dest"])
+
+        shutil.move(src_path, dest_path)
         self._set_response()
         print("MOVE")
 
@@ -118,6 +126,12 @@ class FileServer(BaseHTTPRequestHandler):
             return
 
         path = pathlib.Path(filename + file)
+
+        # for the purposes of this project I only accept folders and text files
+        if path.suffix not in self.valid_suffix:
+            self._set_dismiss_response()
+            return
+
         if path.exists():
             # let's generate our own hash
             hash = self.get_hash(path)
@@ -167,9 +181,10 @@ class FileServer(BaseHTTPRequestHandler):
 
         content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
         post_data = self.rfile.read(content_length)  # <--- Gets the data itself
-        self.valid_post_urls[self.path](self, post_data, content_length)
         logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
-                str(self.path), str(self.headers), post_data.decode('utf-8'))
+                     str(self.path), str(self.headers), post_data.decode('utf-8'))
+        self.valid_post_urls[self.path](self, post_data, content_length)
+
         # ipdb.set_trace()
         # self._set_response()
         self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
