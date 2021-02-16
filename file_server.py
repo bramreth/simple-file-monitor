@@ -8,7 +8,6 @@ https://gist.github.com/mdonkers/63e115cc0c79b4f6b8b3a6b797e485c7
 """
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import urlparse
 import urllib
 import sys
 import logging
@@ -22,7 +21,7 @@ dirname = os.path.dirname(__file__)
 filename = dirname
 
 
-def get_hash(path_in):
+def get_hash(path_in: pathlib.Path) -> str:
     """
     take a pathlib path and return a hash of the given file
     :param path_in:
@@ -39,14 +38,14 @@ def get_hash(path_in):
 class FileServer(BaseHTTPRequestHandler):
     valid_suffix = [".txt"]
 
-    def handle_modify(self, data):
+    def handle_modify(self, data: str) -> None:
         logging.info("handle modify")
         json_dat = json.loads(data)
         path = pathlib.Path(filename + json_dat['filename'])
         path.write_text(json_dat['contents'])
         self._set_response()
 
-    def handle_create_dir(self, created_name):
+    def handle_create_dir(self, created_name: str) -> None:
         logging.info("handle created directory")
         path = pathlib.Path(filename + created_name)
         if not path.exists():
@@ -55,7 +54,7 @@ class FileServer(BaseHTTPRequestHandler):
             logging.warning("folder already exists")
         self._set_response()
 
-    def handle_create_file(self, created_name):
+    def handle_create_file(self, created_name: str) -> None:
         logging.info("handle created file")
         path = pathlib.Path(filename + created_name)
         if not path.parent.exists():
@@ -66,7 +65,7 @@ class FileServer(BaseHTTPRequestHandler):
             logging.warning("file already exists")
         self._set_response()
 
-    def handle_delete(self, deleted_name):
+    def handle_delete(self, deleted_name: str) -> None:
         logging.info("handle deletion")
         path = pathlib.Path(filename + deleted_name)
         if path.exists():
@@ -79,7 +78,7 @@ class FileServer(BaseHTTPRequestHandler):
             logging.warning("deletion target doesn't exist")
         self._set_response()
 
-    def handle_move(self, data):
+    def handle_move(self, data: str) -> None:
         logging.info("handle move/ rename")
         json_dat = json.loads(data)
         src_path = pathlib.Path(filename + json_dat["src"])
@@ -97,7 +96,7 @@ class FileServer(BaseHTTPRequestHandler):
         "/move": handle_move
     }
 
-    def handle_modify_request(self, params):
+    def handle_modify_request(self, params: dict) -> None:
         if isinstance(params["file"], list) and isinstance(params["hash"], list):
             file = params["file"][0]
             md5 = params["hash"][0]
@@ -128,13 +127,13 @@ class FileServer(BaseHTTPRequestHandler):
     }
 
     # reply to the requester with http status codes, default is 200 ok.
-    def _set_response(self, code=200):
+    def _set_response(self, code=200) -> None:
         self.send_response(code)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
     #  act on HTTP POST
-    def do_POST(self):
+    def do_POST(self) -> None:
         # only accept paths from whitelist
         if self.path not in self.valid_post_urls.keys():
             self._set_response(400)
@@ -147,7 +146,7 @@ class FileServer(BaseHTTPRequestHandler):
         # boilerplate response
         self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         # the get path have parameters that need to be extracted and stripped before whitelisting
         parse = urllib.parse.urlparse(self.path)
         params = urllib.parse.parse_qs(parse.query)
@@ -160,7 +159,7 @@ class FileServer(BaseHTTPRequestHandler):
         self.valid_get_urls[path](self, params)
 
 
-def run(server_class=HTTPServer, handler_class=FileServer, port=8080):
+def run(server_class=HTTPServer, handler_class=FileServer, port=8080) -> None:
     """
     boilerplate code for instancing an http server with a custom handler
     :param server_class:
@@ -182,7 +181,7 @@ def run(server_class=HTTPServer, handler_class=FileServer, port=8080):
     logging.info('Stopping httpd...\n')
 
 
-def setup_and_run(fname):
+def setup_and_run(fname: str) -> None:
     """
     update global filename from parameter to synchronise argpassing and runnign the script via import
     :param fname:
@@ -197,4 +196,3 @@ if __name__ == '__main__':
     # this should be updated to use argparse
     filename_in = os.path.join(dirname, sys.argv[1]) if len(sys.argv) > 1 else dirname
     setup_and_run(filename_in)
-

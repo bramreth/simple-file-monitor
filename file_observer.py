@@ -29,7 +29,7 @@ class CustomWatcher(FileSystemEventHandler):
     # once the server is deployed, this would obviously need to be parmeterised
     url = 'http://127.0.0.1:8080'
 
-    def on_moved(self, event):
+    def on_moved(self, event) -> None:
         super(CustomWatcher, self).on_moved(event)
         logging.info(event)
 
@@ -39,7 +39,7 @@ class CustomWatcher(FileSystemEventHandler):
 
         requests.post(self.url + "/move", data=json_dat)
 
-    def on_created(self, event):
+    def on_created(self, event) -> None:
         super(CustomWatcher, self).on_created(event)
         logging.info(event)
 
@@ -54,13 +54,13 @@ class CustomWatcher(FileSystemEventHandler):
             # so let's propogate a modified event manually
             self.on_modified(event)
 
-    def on_deleted(self, event):
+    def on_deleted(self, event) -> None:
         super(CustomWatcher, self).on_deleted(event)
         logging.info(event)
         file = event.src_path.lstrip(path)
         requests.post(self.url + "/delete", data=file)
 
-    def on_modified(self, event):
+    def on_modified(self, event) -> None:
         super(CustomWatcher, self).on_modified(event)
         logging.info(event)
         if event.is_directory:
@@ -87,13 +87,13 @@ class CustomWatcher(FileSystemEventHandler):
                 # the filename in the post, this would be necessary for security reasons and for keeping better track
                 # of ongoing connections.
                 # this would also let us ignore posts that had not previously established a session with the server.
-                r = requests.post(self.url + "/modify", data=dat)
+                requests.post(self.url + "/modify", data=dat)
         else:
             logging.warning("server file copy already up to date.")
 
 
 # code from the watchdog library docs
-def setup_watchdog(path_in):
+def setup_watchdog(path_in: str) -> None:
     global path
     path = path_in
     logging.basicConfig(level=logging.INFO,
@@ -116,5 +116,4 @@ def setup_watchdog(path_in):
 
 if __name__ == "__main__":
     # this should be updated to use argparse
-    path_in = sys.argv[1] if len(sys.argv) > 1 else '.'
-    setup_watchdog(path_in)
+    setup_watchdog(sys.argv[1] if len(sys.argv) > 1 else '.')

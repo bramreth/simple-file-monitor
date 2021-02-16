@@ -7,7 +7,7 @@ import os
 import time
 
 
-def clear_dir(dir_path):
+def clear_dir(dir_path: pathlib.Path):
     if dir_path.exists():
         shutil.rmtree(dir_path)
     time.sleep(1)
