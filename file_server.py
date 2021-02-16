@@ -13,7 +13,6 @@ import sys
 import logging
 import os
 import pathlib
-import hashlib
 import json
 import shutil
 
@@ -36,6 +35,8 @@ class FileServer(BaseHTTPRequestHandler):
         json_dat = json.loads(data)
         path = pathlib.Path(filename + json_dat['filename'])
         path.write_text(json_dat['contents'])
+
+
         # we need to add this file to the filehashset
         self.hash_set.add_hash(path)
         self._set_response()
@@ -121,13 +122,13 @@ class FileServer(BaseHTTPRequestHandler):
         :param params: dict
         :return:
         """
-        if isinstance(params["file"], list) and isinstance(params["hash"], list):
-            file = params["file"][0]
-            md5 = params["hash"][0]
-        else:
+
+        if not (isinstance(params["file"], list) and isinstance(params["hash"], list)):
             logging.error("invalid modify request parameters", params)
             self._set_response(400)
             return
+        file = params["file"][0]
+        md5 = params["hash"][0]
 
         path = pathlib.Path(filename + file)
 
@@ -234,18 +235,7 @@ def run(server_class=HTTPServer, handler_class=FileServer, port=8080) -> None:
     logging.info('Stopping httpd...\n')
 
 
-def setup_and_run(fname: str) -> None:
-    """
-    update global filename from parameter to synchronise argpassing and runnign the script via import
-    :param fname: str
-    :return:
-    """
-    global filename
-    filename = fname
-    run()
-
-
 if __name__ == '__main__':
     # this should be updated to use argparse
-    filename_in = os.path.join(dirname, sys.argv[1]) if len(sys.argv) > 1 else dirname
-    setup_and_run(filename_in)
+    filename = os.path.join(dirname, sys.argv[1]) if len(sys.argv) > 1 else dirname
+    run()
