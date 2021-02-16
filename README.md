@@ -10,7 +10,16 @@ monitoring changes in that directory and uploads any change to its server
 
 - 1.2 a simple server which takes one empty directory as argument and receives any change
 from its client
+
+### here we show 1.1 and 1.2 in action
+![action view](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/in_action.gif)
+![parameter view](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/dir_view.gif)
+
 - Bonus 1. optimise data transfer by avoiding uploading the same file multiple times
+
+### here we have bonus 1 with file hashing to check if data is already present on the server
+![reduce uplaod_hash](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/hash_comparison.jpg)
+
 - Bonus 2. optimise data transfer by avoiding uploading the same partial files (files sharing
 partially the same content) multiple times
 
@@ -36,3 +45,5 @@ I make no attempt at:
 - creating sessions with the server, to simplify the process of posting file hashes and then the file if needed.
 - a simple argparser for running over the command line
 - history tracking for the server, logging dumps and an object-oriented linked list of events.
+
+
