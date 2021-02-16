@@ -1,6 +1,9 @@
 # simple-file-monitor
 barebones python file management system
 
+![action view](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/in_action.gif)
+![parameter view](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/dir_view.gif)
+
 ## specification
 
 Build an application to synchronise a source folder and a destination folder over IP:
@@ -37,4 +40,4 @@ I make no attempt at:
 - a simple argparser for running over the command line
 - history tracking for the server, logging dumps and an object-oriented linked list of events.
 
-![parameter view](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/dir_view.gif)
+
