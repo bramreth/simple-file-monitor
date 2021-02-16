@@ -12,13 +12,13 @@ monitoring changes in that directory and uploads any change to its server
 from its client
 
 ### here we show 1.1 and 1.2 in action
-![action view](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/in_action.gif)
-![parameter view](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/dir_view.gif)
+![action view](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/in_action.gif)
+![parameter view](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/dir_view.gif)
 
 - Bonus 1. optimise data transfer by avoiding uploading the same file multiple times
 
 ### here we have bonus 1 with file hashing to check if data is already present on the server
-![reduce uplaod_hash](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/hash_comparison.jpg)
+![reduce uplaod_hash](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/hash_comparison.jpg)
 
 - Bonus 2. optimise data transfer by avoiding uploading the same partial files (files sharing
 partially the same content) multiple times
