@@ -23,6 +23,11 @@ filename = dirname
 
 
 def get_hash(path_in):
+    """
+    take a pathlib path and return a hash of the given file
+    :param path_in:
+    :return:
+    """
     with open(path_in, 'rb') as payload:
         file_hash = hashlib.md5()
         # boilerplate code, let's us hash larger files
@@ -33,9 +38,6 @@ def get_hash(path_in):
 
 class FileServer(BaseHTTPRequestHandler):
     valid_suffix = [".txt"]
-    # logging.basicConfig(level=logging.INFO,
-    #                     format='%(asctime)s - %(message)s',
-    #                     datefmt='%Y-%m-%d %H:%M:%S')
 
     def handle_modify(self, data):
         logging.info("handle modify")
@@ -55,9 +57,7 @@ class FileServer(BaseHTTPRequestHandler):
 
     def handle_create_file(self, created_name):
         logging.info("handle created file")
-        print(created_name)
         path = pathlib.Path(filename + created_name)
-        print(path)
         if not path.parent.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
         if not path.exists():
@@ -115,7 +115,6 @@ class FileServer(BaseHTTPRequestHandler):
         if path.exists():
             # let's generate our hash of the file and compare them to find out if we need the updated data.
             file_hash = get_hash(path)
-            print(file_hash, md5)
             if file_hash != md5:
                 self._set_response()
                 logging.info("request this files data")
@@ -162,6 +161,13 @@ class FileServer(BaseHTTPRequestHandler):
 
 
 def run(server_class=HTTPServer, handler_class=FileServer, port=8080):
+    """
+    boilerplate code for instancing an http server with a custom handler
+    :param server_class:
+    :param handler_class:
+    :param port:
+    :return:
+    """
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
@@ -177,9 +183,13 @@ def run(server_class=HTTPServer, handler_class=FileServer, port=8080):
 
 
 def setup_and_run(fname):
+    """
+    update global filename from parameter to synchronise argpassing and runnign the script via import
+    :param fname:
+    :return:
+    """
     global filename
     filename = fname
-    print("bmark filename", filename)
     run()
 
 
