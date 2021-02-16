@@ -5,6 +5,9 @@ https://gist.github.com/mdonkers/63e115cc0c79b4f6b8b3a6b797e485c7
 """
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+import hash_file_set
+
 import urllib
 import sys
 import logging
@@ -18,22 +21,9 @@ dirname = os.path.dirname(__file__)
 filename = dirname
 
 
-def get_hash(path_in: pathlib.Path) -> str:
-    """
-    take a pathlib path and return a hash of the given file
-    :param path_in: pathlib.Path
-    :return: str
-    """
-    with open(path_in, 'rb') as payload:
-        file_hash = hashlib.md5()
-        # boilerplate code, let's us hash larger files
-        for chunk in iter(lambda: payload.read(4096), b""):
-            file_hash.update(chunk)
-        return file_hash.hexdigest()
-
-
 class FileServer(BaseHTTPRequestHandler):
     valid_suffix = [".txt"]
+    hash_set = hash_file_set.HashFileSet()
 
     def handle_modify(self, data: str) -> None:
         """
@@ -46,6 +36,8 @@ class FileServer(BaseHTTPRequestHandler):
         json_dat = json.loads(data)
         path = pathlib.Path(filename + json_dat['filename'])
         path.write_text(json_dat['contents'])
+        # we need to add this file to the filehashset
+        self.hash_set.add_hash(path)
         self._set_response()
 
     def handle_create_dir(self, created_name: str) -> None:
@@ -91,6 +83,7 @@ class FileServer(BaseHTTPRequestHandler):
                 # pathlib can't delete folders with contents, so shutil is used
                 shutil.rmtree(path)
             else:
+                self.hash_set.remove_path(path)
                 path.unlink(missing_ok=True)
         else:
             logging.warning("deletion target doesn't exist")
@@ -108,6 +101,7 @@ class FileServer(BaseHTTPRequestHandler):
         dest_path = pathlib.Path(filename + json_dat["dest"])
 
         shutil.move(src_path, dest_path)
+        self.hash_set.move_hash(src_path, dest_path)
         self._set_response()
 
     # a dictionary of post paths and their handler methods, this should be handled by a server framework and decorators
@@ -136,6 +130,7 @@ class FileServer(BaseHTTPRequestHandler):
             return
 
         path = pathlib.Path(filename + file)
+
         # for the purposes of keeping scope small I only accept text files
         if path.suffix not in self.valid_suffix:
             self._set_response(406)
@@ -143,8 +138,19 @@ class FileServer(BaseHTTPRequestHandler):
 
         if path.exists():
             # let's generate our hash of the file and compare them to find out if we need the updated data.
-            file_hash = get_hash(path)
+            file_hash = hash_file_set.get_hash(path)
             if file_hash != md5:
+                # now we can check the rest of our hashes
+
+                # if the file already exists in filehashset we can just copy it over
+                local_copy = self.hash_set.get_hash_path(md5)
+                if local_copy:
+                    # copy a local file from the hash set
+                    path.write_text(local_copy.read_text())
+                    self._set_response(406)
+                    logging.info("local copy of file already exists, copying")
+                    return
+
                 self._set_response()
                 logging.info("request this files data")
             else:

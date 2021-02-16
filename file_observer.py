@@ -6,6 +6,9 @@ https://pypi.org/project/requests/
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+
+import hash_file_set
+
 import sys
 import time
 import logging
@@ -87,11 +90,7 @@ class CustomWatcher(FileSystemEventHandler):
             return
         file = event.src_path.lstrip(path)
         # boilerplate code to generate the hash for our file
-        file_hash = hashlib.md5()
-        with open(event.src_path, 'rb') as payload:
-            for chunk in iter(lambda: payload.read(4096), b""):
-                file_hash.update(chunk)
-            file_hash = file_hash.hexdigest()
+        file_hash = hash_file_set.get_hash(event.src_path)
         # modify request returns 200 if the server has a different hash to us, indicating we should then post the file
         response = requests.get(self.url + "/modify_request", params={"file": file, "hash": file_hash})
         if response.status_code == 200:
