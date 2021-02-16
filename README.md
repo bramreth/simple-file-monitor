@@ -46,4 +46,4 @@ I make no attempt at:
 - a simple argparser for running over the command line
 - history tracking for the server, logging dumps and an object-oriented linked list of events.
 
-![test results](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/test_pass.jpg)
+![test results](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/test_run.gif)
