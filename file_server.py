@@ -1,8 +1,5 @@
 """
-
 https://docs.python.org/3/library/http.server.html
-
-
 here is some example code I looked at to jumpstart setting up the http server.
 https://gist.github.com/mdonkers/63e115cc0c79b4f6b8b3a6b797e485c7
 """
@@ -24,8 +21,8 @@ filename = dirname
 def get_hash(path_in: pathlib.Path) -> str:
     """
     take a pathlib path and return a hash of the given file
-    :param path_in:
-    :return:
+    :param path_in: pathlib.Path
+    :return: str
     """
     with open(path_in, 'rb') as payload:
         file_hash = hashlib.md5()
@@ -39,6 +36,12 @@ class FileServer(BaseHTTPRequestHandler):
     valid_suffix = [".txt"]
 
     def handle_modify(self, data: str) -> None:
+        """
+        when a modify request is posted, grab the filename and contents from the json data
+        and write the contents to that file. A modify request should be run prior to this
+        :param data: str
+        :return:
+        """
         logging.info("handle modify")
         json_dat = json.loads(data)
         path = pathlib.Path(filename + json_dat['filename'])
@@ -46,6 +49,11 @@ class FileServer(BaseHTTPRequestHandler):
         self._set_response()
 
     def handle_create_dir(self, created_name: str) -> None:
+        """
+        make a directory at the path with the provided name.
+        :param created_name: str
+        :return:
+        """
         logging.info("handle created directory")
         path = pathlib.Path(filename + created_name)
         if not path.exists():
@@ -55,6 +63,11 @@ class FileServer(BaseHTTPRequestHandler):
         self._set_response()
 
     def handle_create_file(self, created_name: str) -> None:
+        """
+        touch a file at the path with the provided name
+        :param created_name: str
+        :return:
+        """
         logging.info("handle created file")
         path = pathlib.Path(filename + created_name)
         if not path.parent.exists():
@@ -66,6 +79,11 @@ class FileServer(BaseHTTPRequestHandler):
         self._set_response()
 
     def handle_delete(self, deleted_name: str) -> None:
+        """
+        use shutil to delete any contents at the given path if its a directory and unlink if its a file.
+        :param deleted_name: str
+        :return:
+        """
         logging.info("handle deletion")
         path = pathlib.Path(filename + deleted_name)
         if path.exists():
@@ -79,6 +97,11 @@ class FileServer(BaseHTTPRequestHandler):
         self._set_response()
 
     def handle_move(self, data: str) -> None:
+        """
+        unpack the json source and destination path and use shutil to move the contents appropriately
+        :param data: str
+        :return:
+        """
         logging.info("handle move/ rename")
         json_dat = json.loads(data)
         src_path = pathlib.Path(filename + json_dat["src"])
@@ -97,6 +120,13 @@ class FileServer(BaseHTTPRequestHandler):
     }
 
     def handle_modify_request(self, params: dict) -> None:
+        """
+        read in the provided filename and hash, hash our copy of that file and see if there is a difference.
+        if so response with a 200 code to indicate we want the file to be uploaded. otherwise respond with a
+        406 not-acceptable
+        :param params: dict
+        :return:
+        """
         if isinstance(params["file"], list) and isinstance(params["hash"], list):
             file = params["file"][0]
             md5 = params["hash"][0]
@@ -106,7 +136,7 @@ class FileServer(BaseHTTPRequestHandler):
             return
 
         path = pathlib.Path(filename + file)
-        # for the purposes of this project I only accept text files
+        # for the purposes of keeping scope small I only accept text files
         if path.suffix not in self.valid_suffix:
             self._set_response(406)
             return
@@ -120,6 +150,8 @@ class FileServer(BaseHTTPRequestHandler):
             else:
                 self._set_response(406)
                 logging.info("file is up to date and can be ignored")
+        else:
+            logging.error("file doesn't exist")
 
     # a dictionary of get paths and their handler methods, this should be handled by a server framework and decorators
     valid_get_urls = {
@@ -128,12 +160,22 @@ class FileServer(BaseHTTPRequestHandler):
 
     # reply to the requester with http status codes, default is 200 ok.
     def _set_response(self, code=200) -> None:
+        """
+        set the response status code for the request, defaults to 200 ok.
+        :param code: int
+        :return:
+        """
         self.send_response(code)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
     #  act on HTTP POST
     def do_POST(self) -> None:
+        """
+        this is an http server function that is called when a post is recieved. here we strain our parameters through
+        handler methods in the valid_post_urls dictionary
+        :return:
+        """
         # only accept paths from whitelist
         if self.path not in self.valid_post_urls.keys():
             self._set_response(400)
@@ -147,6 +189,11 @@ class FileServer(BaseHTTPRequestHandler):
         self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
 
     def do_GET(self) -> None:
+        """
+        this is an http server function that is called when a GET is recieved. here we strain our parameters through
+        handler methods in the valid_get_urls dictionary and read any parameters using urllib
+        :return:
+        """
         # the get path have parameters that need to be extracted and stripped before whitelisting
         parse = urllib.parse.urlparse(self.path)
         params = urllib.parse.parse_qs(parse.query)
@@ -184,7 +231,7 @@ def run(server_class=HTTPServer, handler_class=FileServer, port=8080) -> None:
 def setup_and_run(fname: str) -> None:
     """
     update global filename from parameter to synchronise argpassing and runnign the script via import
-    :param fname:
+    :param fname: str
     :return:
     """
     global filename

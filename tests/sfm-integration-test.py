@@ -5,12 +5,16 @@ import pathlib
 import shutil
 import os
 import time
-import sys
 
 venv_path = "venv/Scripts/python"
 
 
-def clear_dir(dir_path: pathlib.Path):
+def clear_dir(dir_path: pathlib.Path) -> None:
+    """
+    take a directory, delete it and recreate it, a simple cleanup step after running tests.
+    :param dir_path:
+    :return:
+    """
     if dir_path.exists():
         shutil.rmtree(dir_path)
     time.sleep(1)
@@ -28,7 +32,11 @@ class SFMIntegrationTestCase(unittest.TestCase):
     monitored_dir_path = basepath.parent.joinpath(monitored_dir)
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
+        """
+        spawn the server and monitor process's
+        :return:
+        """
         print("setUpClass")
         cls.server_process = subprocess.Popen([venv_path, "file_server.py", cls.server_dir]
                                               )
@@ -41,27 +49,39 @@ class SFMIntegrationTestCase(unittest.TestCase):
         time.sleep(2)
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
+        """
+        kill the two processes and wipe their monitored directories
+        :return:
+        """
         print("tearDownClass")
         cls.server_process.kill()
         cls.monitor_process.kill()
         clear_dir(cls.server_dir_path)
         clear_dir(cls.monitored_dir_path)
 
-    def test_create_delete_file(self):
+    def test_create_delete_file(self) -> None:
+        """
+        create a text file, check it exists on the server, delete it and check it then doesn't exist on the server
+        :return:
+        """
         print("testing files can be created and deleted locally and on the server")
         # create a file with a name in the monitored dir, assert it exists in both locations
         new_path = self.monitored_dir_path.joinpath("tmp.txt")
         new_path.touch()
         self.assertTrue(new_path.exists())  # assert file created in monitored dir
-        time.sleep(1)
-        self.assertTrue(self.server_dir_path.joinpath("tmp.txt").exists()) # assert file also created on server
+        time.sleep(1)  # give the server a bit of breathing room to receive the rest request
+        self.assertTrue(self.server_dir_path.joinpath("tmp.txt").exists())  # assert file also created on server
         new_path.unlink()
         self.assertFalse(new_path.exists())
         time.sleep(1)
         self.assertFalse(self.server_dir_path.joinpath("tmp.txt").exists())
 
-    def test_create_delete_dir(self):
+    def test_create_delete_dir(self) -> None:
+        """
+        create a folder, check it exists on the server, delete it and check it then doesn't exist on the server
+        :return:
+        """
         print("testing directories can be created and deleted locally and on the server")
         # create a file with a name in the monitored dir, assert it exists in both locations
         new_path = self.monitored_dir_path.joinpath("tmp_dir")
@@ -75,7 +95,7 @@ class SFMIntegrationTestCase(unittest.TestCase):
         self.assertFalse(self.server_dir_path.joinpath("tmp_dir").exists())
 
     # this doesn't seem to be triggering watchdog events so I'm going to leave this for the moment
-    # def test_move_file(self):
+    # def test_move_file(self) -> None:
     #     new_dir = self.monitored_dir_path.joinpath("tmp_dir")
     #     new_file = self.monitored_dir_path.joinpath("tmp.txt")
     #     new_dir.mkdir()
@@ -99,7 +119,12 @@ class SFMIntegrationTestCase(unittest.TestCase):
     #     self.assertFalse(new_file.exists())
     #     self.assertFalse(server_path.joinpath("tmp.txt").exists())
 
-    def test_create_file_with_data(self):
+    def test_create_file_with_data(self) -> None:
+        """
+        create a file, check it exists on the server, write data to it, check the file on the server contains the same
+        data
+        :return:
+        """
         print("testing files can be created and deleted locally with contents")
         new_path = self.monitored_dir_path.joinpath("pangram.txt")
         new_path.touch()
@@ -128,6 +153,9 @@ class SFMIntegrationTestCase(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    venv_path = (sys.argv[1] if len(sys.argv) > 1 else 'python')
+    # the subprocess popen was having a hard time understanding my virutal environment so I added some parsing
+    # in case a venv isn't present
+    if not os.environ['VIRTUAL_ENV']:
+        venv_path = "python"
     SFMIntegrationTestCase()
     unittest.main()
