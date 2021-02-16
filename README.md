@@ -36,3 +36,5 @@ I make no attempt at:
 - creating sessions with the server, to simplify the process of posting file hashes and then the file if needed.
 - a simple argparser for running over the command line
 - history tracking for the server, logging dumps and an object-oriented linked list of events.
+
+![parameter view](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/dir_view.gif)
