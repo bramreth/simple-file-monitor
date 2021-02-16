@@ -5,6 +5,9 @@ import pathlib
 import shutil
 import os
 import time
+import sys
+
+venv_path = "venv/Scripts/python"
 
 
 def clear_dir(dir_path: pathlib.Path):
@@ -14,7 +17,7 @@ def clear_dir(dir_path: pathlib.Path):
     dir_path.mkdir()
 
 
-class MyTestCase(unittest.TestCase):
+class SFMIntegrationTestCase(unittest.TestCase):
 
     basepath = pathlib.Path(os.path.dirname(__file__))
     server_process = None
@@ -27,11 +30,11 @@ class MyTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         print("setUpClass")
-        cls.server_process = subprocess.Popen(["venv/Scripts/python", "file_server.py", cls.server_dir]
+        cls.server_process = subprocess.Popen([venv_path, "file_server.py", cls.server_dir]
                                               )
         time.sleep(2)
-        # don't log the watchgod unless it's an error
-        cls.monitor_process = subprocess.Popen(["venv/Scripts/python", "file_observer.py", cls.monitored_dir],
+        # don't log the watchdog unless it's an error
+        cls.monitor_process = subprocess.Popen([venv_path, "file_observer.py", cls.monitored_dir],
                                                stdout=subprocess.DEVNULL,
                                                stderr=subprocess.STDOUT
                                                )
@@ -125,6 +128,6 @@ class MyTestCase(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    print("start")
-    MyTestCase()
+    venv_path = (sys.argv[1] if len(sys.argv) > 1 else 'python')
+    SFMIntegrationTestCase()
     unittest.main()
