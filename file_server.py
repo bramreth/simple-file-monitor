@@ -32,7 +32,6 @@ def get_hash(path_in):
 
 
 class FileServer(BaseHTTPRequestHandler):
-
     valid_suffix = [".txt"]
     # logging.basicConfig(level=logging.INFO,
     #                     format='%(asctime)s - %(message)s',
@@ -56,7 +55,9 @@ class FileServer(BaseHTTPRequestHandler):
 
     def handle_create_file(self, created_name):
         logging.info("handle created file")
+        print(created_name)
         path = pathlib.Path(filename + created_name)
+        print(path)
         if not path.parent.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
         if not path.exists():
@@ -175,7 +176,15 @@ def run(server_class=HTTPServer, handler_class=FileServer, port=8080):
     logging.info('Stopping httpd...\n')
 
 
+def setup_and_run(fname):
+    global filename
+    filename = fname
+    print("bmark filename", filename)
+    run()
+
+
 if __name__ == '__main__':
     # this should be updated to use argparse
-    filename = os.path.join(dirname, sys.argv[1]) if len(sys.argv) > 1 else dirname
-    run()
+    filename_in = os.path.join(dirname, sys.argv[1]) if len(sys.argv) > 1 else dirname
+    setup_and_run(filename_in)
+

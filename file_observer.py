@@ -93,7 +93,9 @@ class CustomWatcher(FileSystemEventHandler):
 
 
 # code from the watchdog library docs
-def setup_watchdog():
+def setup_watchdog(path_in):
+    global path
+    path = path_in
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
@@ -114,5 +116,5 @@ def setup_watchdog():
 
 if __name__ == "__main__":
     # this should be updated to use argparse
-    path = sys.argv[1] if len(sys.argv) > 1 else '.'
-    setup_watchdog()
+    path_in = sys.argv[1] if len(sys.argv) > 1 else '.'
+    setup_watchdog(path_in)
