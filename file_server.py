@@ -15,6 +15,7 @@ import os
 import pathlib
 import json
 import shutil
+import ipdb
 
 dirname = os.path.dirname(__file__)
 filename = dirname
@@ -23,6 +24,20 @@ filename = dirname
 class FileServer(BaseHTTPRequestHandler):
     valid_suffix = [".txt"]
     hash_set = hash_file_set.HashFileSet()
+
+    def handle_modify_bin(self, data) -> None:
+        """
+        when a modify request is posted, grab the filename and contents from the json data
+        and write the contents to that file. A modify request should be run prior to this
+        :param data: str
+        :return:
+        """
+        logging.info("handle modify")
+        self.wfile.write(data.encode())
+        # ipdb.set_trace()
+        # json_dat = json.loads(data)
+        # path = pathlib.Path(filename + json_dat['filename'])
+        # path.write_text(json_dat['contents'])
 
     def handle_modify(self, data: str) -> None:
         """
@@ -108,6 +123,7 @@ class FileServer(BaseHTTPRequestHandler):
     # a dictionary of post paths and their handler methods, this should be handled by a server framework and decorators
     valid_post_urls = {
         "/modify": handle_modify,
+        "/modif_bin": handle_modify_bin,
         "/create_dir": handle_create_dir,
         "/create_file": handle_create_file,
         "/delete": handle_delete,
