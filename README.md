@@ -28,13 +28,31 @@ partially the same content) multiple times
 ## instructions
 for ease of my development, this project was created on Windows with Pycharm community. As such you would have the easiest recreating this system under those conditions.
 - git clone this project and open it in pycharm
-- you will be prompted to create a venv from the project requirements, do this using a python interpreter preferably 3.7+ for typing.
-- go to file_server.py and edit the run configuration once the file has finished indexing.
-- choose your python interpreter if it doesn't auto fill and add a prameter with the name of the folder you want the server to monitor
-- repeat this step for file_observer.py, with the name of the local folder you want to monitor
-- create these folders.
-- to run this manually you can hit shif+f10 in file_server and observer or click the green run button.
-- when file_server runs you will be prompted to grant firewall access, do this or the server will be upsettingly silent.
+- you will be prompted to create a venv from the project requirements, do this using a python interpreter preferably 3.7+ for typing. 
+
+![venv](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/venv.png)
+
+- go to file_server.py and edit the run configuration once the file has finished indexing. 
+
+![config](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/run_config.png)
+
+- choose your python interpreter if it doesn't auto fill and add a prameter with the name of the folder you want the server to monitor  
+
+![server_dir](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/server_dir_config.png)
+
+- repeat this step for file_observer.py, with the name of the local folder you want to monitor 
+
+![monitor_dir](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/monitored_dir_config.png)
+
+- create these folders. 
+
+![folders](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/create_folders.png)
+
+- to run this manually you can hit shift+f10 in file_server and observer or click the green run button.
+- when file_server runs you will be prompted to grant firewall access, do this or the server will be upsettingly silent. 
+
+![firewall](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/firewall_access.png)
+
 - you can now add, remove, move and rename folders and text files in the monitored dir to your hearts content!
 - there are a few integration tests that can be run in the test folder as well.
 
