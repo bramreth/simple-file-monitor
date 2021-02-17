@@ -155,7 +155,5 @@ class SFMIntegrationTestCase(unittest.TestCase):
 if __name__ == '__main__':
     # the subprocess popen was having a hard time understanding my virutal environment so I added some parsing
     # in case a venv isn't present
-    if not os.environ['VIRTUAL_ENV']:
-        venv_path = "python"
     SFMIntegrationTestCase()
     unittest.main()
