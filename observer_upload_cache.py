@@ -1,4 +1,5 @@
 import pathlib
+import difflib
 
 
 # this makes no appologies for multiple hashes having the same values, I'm not opening that can of worms at present
@@ -21,8 +22,24 @@ class ObserverCache:
     #         if not len(self.hash_map[c_hash]):
     #             self.hash_map.pop(c_hash, None)
 
-    def add_contents(self, path_in: pathlib.Path):
-        self.cache_map[path_in] = path_in.read_text()
+    def remove_contents(self, path_in: str):
+        if path_in in self.cache_map:
+            self.cache_map.pop(path_in, None)
+
+    def add_contents(self, path_in: str):
+        self.cache_map[path_in] = pathlib.Path(path_in).read_text()
+
+    def get_contents(self, path_in: pathlib.Path):
+        if path_in in self.cache_map:
+            return self.cache_map[path_in]
+        return None
+
+    def move_contents(self, src: str, dest: str):
+        if src in self.cache_map:
+            self.cache_map[dest] = self.cache_map[src]
+            self.cache_map.pop(src, None)
+        else:
+            self.add_contents(dest)
 
     # def move_hash(self, origin_in, path_in):
     #     remove_list = []

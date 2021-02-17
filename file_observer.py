@@ -7,23 +7,27 @@ https://pypi.org/project/requests/
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
+import observer_upload_cache
 import hash_file_set
 
 import sys
 import time
 import logging
 import requests
-import hashlib
+import os
 import json
+import difflib
+import pathlib
 
 path = ""
-
+dirname = os.path.dirname(__file__)
 
 # inherit the filesystem event handler and add functionality
 class CustomWatcher(FileSystemEventHandler):
     # once the server is actually deployed, this would obviously need to be parmeterised
     # however seeing as the file server has no security unless i change library this should be fine.
     url = 'http://127.0.0.1:8080'
+    upload_cache = observer_upload_cache.ObserverCache()
 
     def on_moved(self, event) -> None:
         """
@@ -39,7 +43,9 @@ class CustomWatcher(FileSystemEventHandler):
         dest_file = event.dest_path.lstrip(path)
         json_dat = json.dumps({"src": src_file, "dest": dest_file})
 
-        requests.post(self.url + "/move", data=json_dat)
+        post_result = requests.post(self.url + "/move", data=json_dat)
+        if post_result.status_code == 200:
+            self.upload_cache.move_contents(event.src_path, event.dest_path)
 
     def on_created(self, event) -> None:
         """
@@ -73,7 +79,9 @@ class CustomWatcher(FileSystemEventHandler):
         super(CustomWatcher, self).on_deleted(event)
         logging.info(event)
         file = event.src_path.lstrip(path)
-        requests.post(self.url + "/delete", data=file)
+        post_result = requests.post(self.url + "/delete", data=file)
+        if post_result.status_code == 200:
+            self.upload_cache.remove_contents(event.src_path)
 
     def on_modified(self, event) -> None:
         """
@@ -93,7 +101,11 @@ class CustomWatcher(FileSystemEventHandler):
         file_hash = hash_file_set.get_hash(event.src_path)
         # modify request returns 200 if the server has a different hash to us, indicating we should then post the file
         response = requests.get(self.url + "/modify_request", params={"file": file, "hash": file_hash})
+
         if response.status_code == 200:
+            # attempt to update the server from local cache
+            if self.attempt_upload_cache(event.src_path):
+                return
             # post the media
             with open(event.src_path, 'r') as payload:
                 # as I am using the simplest http server possible and bytestreaming files isn't straightforward,
@@ -104,21 +116,51 @@ class CustomWatcher(FileSystemEventHandler):
                 # the filename in the post, this would also be necessary for security reasons and for keeping better
                 # track of ongoing connections.
                 # this would also let us ignore posts that had not previously established a session with the server.
-                requests.post(self.url + "/modify", data=dat)
+                post_result = requests.post(self.url + "/modify", data=dat)
+                if post_result.status_code == 200:
+                    self.upload_cache.add_contents(event.src_path)
+
         else:
             logging.warning("server file copy already up to date.")
 
+    def attempt_upload_cache(self, path_in: str):
+        """
+        try to upload using data from our filecache if possible.
+        check if the cache hash matches the server value
+        if so generate a diff and post that instead.
+        if this all goes okay we
+        :param path_in:
+        :return:
+        """
+        cache_val = self.upload_cache.get_contents(path_in)
+        #no cachec value present, ignore and continue
+        if not cache_val:
+            return False
+        cache_hash = hash_file_set.get_hash(path_in)
+        cache_file = path_in.lstrip(path)
+        # modify request returns 200 if the server has a different hash to us, indicating we should then post the file
+        response = requests.get(self.url + "/modify_request", params={"file": cache_file, "hash": cache_hash})
+        if response.status_code != 200:
+            # the server does not have this cached value, so we need not continue
+            return False
+        # we now know the server has the cached value so let's post a diff of our string
+        print("make diff")
+        new_cont = pathlib.Path(path_in).read_text()
+        diff = difflib.ndiff(cache_val.splitlines(keepends=True), new_cont.splitlines(keepends=True))
+
+        # this creates a generator of a string diff, that we would want to post to the server
+        # I'm not going to spend the time to figure out how to continue this at present
+
+
+
 
 # code from the watchdog library docs
-def setup_watchdog(path_in: str) -> None:
+def setup_watchdog() -> None:
     """
     update the folder we are monitoring and launch watchdog, with our custom watcher, to post requests on
     specific events
-    :param path_in: str
     :return:
     """
-    global path
-    path = path_in
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
@@ -138,4 +180,5 @@ def setup_watchdog(path_in: str) -> None:
 
 if __name__ == "__main__":
     # this should be updated to use argparse
-    setup_watchdog(sys.argv[1] if len(sys.argv) > 1 else '.')
+    path = sys.argv[1] if len(sys.argv) > 1 else '.'
+    setup_watchdog()
