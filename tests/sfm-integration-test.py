@@ -6,7 +6,7 @@ import shutil
 import os
 import time
 
-venv_path = "venv/Scripts/python"
+venv_path = "python3"  # "venv/Scripts/python"
 
 
 def clear_dir(dir_path: pathlib.Path) -> None:
