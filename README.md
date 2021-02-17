@@ -20,8 +20,23 @@ from its client
 ### here we have bonus 1 with file hashing to check if data is already present on the server
 ![reduce uplaod_hash](https://raw.githubusercontent.com/bramreth/simple-file-monitor/main/assets/hash_comparison.jpg)
 
+since then I added a more advance hashing system, where the server keeps a class that monitors all the hashes present as well as all the paths taht point to them, so whenever a file is uploaded we can quickly check whether that file exists on the server anywhere already, and we can copy it across instead of uploading the file again.
+
 - Bonus 2. optimise data transfer by avoiding uploading the same partial files (files sharing
 partially the same content) multiple times
+
+## instructions
+for ease of my development, this project was created on Windows with Pycharm community. As such you would have the easiest recreating this system under those conditions.
+- git clone this project and open it in pycharm
+- you will be prompted to create a venv from the project requirements, do this using a python interpreter preferably 3.7+ for typing.
+- go to file_server.py and edit the run configuration once the file has finished indexing.
+- choose your python interpreter if it doesn't auto fill and add a prameter with the name of the folder you want the server to monitor
+- repeat this step for file_observer.py, with the name of the local folder you want to monitor
+- create these folders.
+- to run this manually you can hit shif+f10 in file_server and observer or click the green run button.
+- when file_server runs you will be prompted to grant firewall access, do this or the server will be upsettingly silent.
+- you can now add, remove, move and rename folders and text files in the monitored dir to your hearts content!
+- there are a few integration tests that can be run in the test folder as well.
 
 ## aproach
 from the get go the most straightforward course of action to get something working appears to be setting up an os dependant directory listener and to use requests to post data to a server and a quick and dirty rest interface for posts that can listen to files being posted to that address.
